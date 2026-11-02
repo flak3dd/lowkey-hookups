@@ -247,12 +247,13 @@ export async function reportProbe(
 function candidateResponse(row: GetEvenCandidateRow, actorId: number): CandidateResponse {
   const isA = row.participantAUserId === actorId;
   const guesses = isA ? row.participantAGuessCount : row.participantBGuessCount;
+  const activeLock = row.lockedUntil && row.lockedUntil > new Date() ? row.lockedUntil : null;
   return {
     candidate: {
       id: row.id,
       guessesRemaining: Math.max(0, 2 - guesses),
       otherGuessedCorrectly: isA ? row.participantBCorrect : row.participantACorrect,
-      lockedUntil: row.lockedUntil?.toISOString() ?? null,
+      lockedUntil: activeLock?.toISOString() ?? null,
       threadId: row.threadId,
       createdAt: row.createdAt.toISOString(),
     },

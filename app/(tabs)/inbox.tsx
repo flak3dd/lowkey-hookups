@@ -166,11 +166,25 @@ export default function Inbox() {
         )
       ) : tab === "candidates" ? (
         candidates.data?.items.length ? candidates.data.items.map((item) => (
-          <Card key={item.id} onPress={() => router.push(`/candidate/${item.id}` as never)} style={{ gap: 10 }}>
-            <Label>ANONYMOUS CANDIDATE</Label>
-            <Text style={{ color: C.text, fontSize: 20 }}>Two probes. Two guesses.</Text>
-            <Body>{item.otherGuessedCorrectly ? "Green light: they recognized you and are waiting." : `${item.guessesRemaining} guess${item.guessesRemaining === 1 ? "" : "es"} remaining.`}</Body>
-            <Text style={{ color: C.accent, fontSize: 13 }}>{item.lockedUntil ? "Locked for 24 hours" : "Open candidate"}</Text>
+          <Card key={item.id} onPress={() => router.push(`/candidate/${item.id}` as never)} style={{ gap: 15 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 13 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 15, backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder, alignItems: "center", justifyContent: "center" }}>
+                <Icon name={item.threadId ? "lock-open-outline" : item.lockedUntil ? "lock-closed-outline" : "eye-off-outline"} color={C.accent} size={21} />
+              </View>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Label>ANONYMOUS CANDIDATE</Label>
+                <Text style={{ color: C.text, fontSize: 18, fontWeight: "600" }}>Two probes. Two guesses.</Text>
+              </View>
+              <Icon name="chevron-forward" size={18} color={C.subtle} />
+            </View>
+            <View style={{ flexDirection: "row", gap: 7 }}>
+              {[0, 1].map((slot) => <View key={slot} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: slot < item.guessesRemaining ? C.accent : C.border }} />)}
+            </View>
+            <Body>{item.threadId ? "Chat unlocked. Names revealed." : item.otherGuessedCorrectly ? "Green light: they recognized you and are waiting." : item.lockedUntil ? "Paused after two incorrect guesses." : `${item.guessesRemaining} guess${item.guessesRemaining === 1 ? "" : "es"} remaining.`}</Body>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Label style={{ color: item.threadId || item.otherGuessedCorrectly ? C.accent : C.muted }}>{item.threadId ? "UNLOCKED" : item.lockedUntil ? "PAUSED 24H" : item.otherGuessedCorrectly ? "GREEN LIGHT" : "OPEN"}</Label>
+              <Text style={{ color: C.accent, fontSize: 13 }}>View candidate</Text>
+            </View>
           </Card>
         )) : <Empty icon="eye-off-outline" title="No mutual candidates yet." description="When you both send an anonymous probe, the guessing game appears here." />
       ) : threads.data?.items.length ? (
