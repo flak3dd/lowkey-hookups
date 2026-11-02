@@ -1,64 +1,71 @@
 # LOWKEY Candidate Inbox + Guessing Screen Wireframes
 
-## Product rule
-A candidate exists only after two people send anonymous probes to each other. Each participant gets two guesses. Two incorrect guesses close the candidate for 24 hours. A green light means the other participant guessed correctly and is waiting. Chat unlocks only after both guesses are correct; the chat reveals both names automatically.
+**Updated for commit `2c58e17`**
 
-## 1. Inbox tab — Candidates
+## Product rule
+A candidate exists only after two people send anonymous probes to each other. Each participant gets two guesses. Two incorrect guesses pause the candidate for 24 hours. A green light means the other participant guessed correctly and is waiting. Chat unlocks only after both guesses are correct; both names are revealed automatically in chat.
+
+## 1. Candidates tab — enhanced card hierarchy
 
 ```text
 ┌────────────────────────────────────┐
 │ LOWKEY                             │
 │ YOU HOLD THE NEXT STEP             │
 │ On your terms.                     │
-│ Probe back, guess, or leave it.    │
 ├────────────────────────────────────┤
 │ Interests │ Candidates │ Chats     │
 ├────────────────────────────────────┤
-│ ANONYMOUS CANDIDATE                │
-│ Two probes. Two guesses.           │
-│ 2 guesses remaining.               │
-│ Open candidate                 →   │
+│ ◉  ANONYMOUS CANDIDATE          ›  │
+│    Two probes. Two guesses.        │
+│    ▰━━━━━━━━  2 OF 2 REMAINING    │
+│    2 guesses remaining.            │
+│    OPEN                 View ›     │
 ├────────────────────────────────────┤
-│ ANONYMOUS CANDIDATE                │
-│ Two probes. Two guesses.           │
-│ Green light: they recognized you.  │
-│ Open candidate                 →   │
+│ ◉  ANONYMOUS CANDIDATE          ›  │
+│    Two probes. Two guesses.        │
+│    ▰━━━━━━━  1 OF 2 REMAINING     │
+│    Green light: they recognized you│
+│    GREEN LIGHT          View ›     │
 ├────────────────────────────────────┤
 │ No read receipts. No online status.│
 └────────────────────────────────────┘
 ```
 
-### Interaction rules
-- The tab is visible to authenticated users even when empty.
-- A candidate card is tappable across its full surface.
-- Status copy is driven by state: `Open candidate`, `Green light: they recognized you and are waiting`, `Locked for 24 hours`, or `Chat unlocked`.
-- Locked candidates remain visible; tapping them explains the remaining lock time.
-- Empty state: “No mutual candidates yet.” / “When you both send an anonymous probe, the guessing game appears here.”
-- Loading state uses the existing LOWKEY spinner; error state keeps the existing retry pattern.
+### Card rules
 
-## 2. Guessing screen — default
+- Full card is tappable; the chevron is a secondary affordance, not the only target.
+- Every card shows an anonymous eye icon until unlocked.
+- Progress bars are filled by `guessesRemaining`; empty slots use the neutral border color.
+- State labels are uppercase and short: `OPEN`, `GREEN LIGHT`, `PAUSED 24H`, `UNLOCKED`.
+- Locked candidates remain visible so the user understands why a candidate disappeared from action.
+- Unlocked candidates route to the named chat.
+
+## 2. Guessing screen — open
 
 ```text
 ┌────────────────────────────────────┐
 │ ‹  Anonymous candidate             │
 ├────────────────────────────────────┤
-│ MUTUAL PROBE                       │
-│ Two guesses. One possibility.      │
-│                                    │
-│ Both of you sent an anonymous      │
-│ probe. You have 2 guesses          │
-│ remaining.                         │
-│                                    │
+│ ◉  MUTUAL PROBE                    │
+│    Two guesses. One possibility.   │
+├────────────────────────────────────┤
+│ YOUR PRIVATE CHANCE        OPEN    │
+│ Both sent an anonymous probe.      │
+│ Guess the verified number without  │
+│ exposing who you are.              │
+│ ▰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   │
+│ 2 OF 2 GUESSES REMAINING           │
+├────────────────────────────────────┤
 │ WHO DO YOU THINK IT IS?            │
 │ ┌────────────────────────────────┐ │
 │ │ +61 412 345 678                │ │
 │ └────────────────────────────────┘ │
-│                                    │
-│ [ Make anonymous guess ]           │
-│                                    │
+│ Use the number you believe belongs │
+│ to the person.                    │
+│ [  Make anonymous guess  → ]       │
+├────────────────────────────────────┤
 │ Chat unlocks only after both       │
-│ people guess correctly. Once       │
-│ unlocked, both names are shown.    │
+│ people guess correctly.            │
 └────────────────────────────────────┘
 ```
 
@@ -66,56 +73,47 @@ A candidate exists only after two people send anonymous probes to each other. Ea
 
 ```text
 ┌────────────────────────────────────┐
-│ ‹  Anonymous candidate             │
+│ YOUR PRIVATE CHANCE       OPEN     │
+│ ▰━━━━━━━━━━━━━━━ 1 OF 2 REMAINING │
 ├────────────────────────────────────┤
-│ MUTUAL PROBE                       │
-│ Two guesses. One possibility.      │
-│                                    │
-│ Both of you sent an anonymous      │
-│ probe. You have 1 guess remaining.│
-│                                    │
-│ ✓ GREEN LIGHT                      │
+│ ◉  GREEN LIGHT                     │
 │ They recognized you and are        │
 │ waiting for your correct guess.    │
-│                                    │
+├────────────────────────────────────┤
 │ WHO DO YOU THINK IT IS?            │
 │ [ phone input ]                    │
-│ [ Make anonymous guess ]           │
+│ [ Make anonymous guess  → ]        │
 └────────────────────────────────────┘
 ```
 
-## 4. Guessing screen — locked
+## 4. Guessing screen — paused
 
 ```text
 ┌────────────────────────────────────┐
-│ ‹  Anonymous candidate             │
+│ YOUR PRIVATE CHANCE       PAUSED   │
+│ ▰━━━━━━━━━━━━━━━━ 0 OF 2 REMAINING│
 ├────────────────────────────────────┤
-│ MUTUAL PROBE                       │
-│ Two guesses. One possibility.      │
-│                                    │
-│ TWO INCORRECT GUESSES              │
-│ This candidate is closed for       │
+│ 🔒 TWO INCORRECT GUESSES           │
+│ This candidate is paused for       │
 │ 24 hours.                          │
-│ Try again in about 23 hours.       │
+│ Try again in about 23h 42m.        │
 │                                    │
-│ [ input disabled ]                 │
-│ [ Make anonymous guess disabled ]  │
+│ [       Guessing paused       ]    │
 └────────────────────────────────────┘
 ```
 
-## 5. Guessing screen — unlocked transition
+## 5. Guessing screen — unlocked
 
 ```text
 ┌────────────────────────────────────┐
-│ ‹  Anonymous candidate             │
+│ YOUR PRIVATE CHANCE       UNLOCKED │
 ├────────────────────────────────────┤
-│ MUTUAL PROBE                       │
 │ CHAT UNLOCKED                      │
-│                                    │
 │ Both of you guessed correctly.     │
-│ Names are now revealed in chat.    │
+│ Names are now revealed in the      │
+│ private conversation.              │
 │                                    │
-│ [ Open revealed chat ]             │
+│ [ Open revealed chat  → ]          │
 └────────────────────────────────────┘
 ```
 

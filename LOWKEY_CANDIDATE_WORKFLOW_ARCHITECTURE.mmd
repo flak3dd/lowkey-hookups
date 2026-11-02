@@ -1,0 +1,31 @@
+flowchart LR
+  A[Sender] -->|anonymous probe| R[Receipt queue]
+  R --> W[Routing worker]
+  W --> P1[Recipient probe]
+  B[Recipient] -->|anonymous probe back| R2[Receipt queue]
+  R2 --> W2[Routing worker]
+  W2 --> P2[Sender probe]
+  P1 --> M{Reciprocal probe pair?}
+  P2 --> M
+  M -- No --> N[No candidate\nNo membership signal]
+  M -- Yes --> C[(getEvenCandidates)]
+  C --> I[Candidates inbox]
+  I --> G[Guess screen]
+  G --> V{Guess valid?}
+  V -- malformed --> E[400 neutral validation error]
+  V -- wrong, attempt 1 --> C1[Remaining = 1]
+  V -- wrong, attempt 2 --> L[lockedUntil = now + 24h]
+  V -- locked --> L2[Return paused state]
+  V -- correct --> F[Participant correct flag]
+  F --> Q{Both correct?}
+  Q -- No --> GL[Green light for other participant]
+  Q -- Yes --> T[(getEvenThreads)]
+  T --> ID[Encrypted identity snapshots]
+  T --> CHAT[Private named chat]
+  L --> C
+  L2 --> C
+  C1 --> C
+  classDef base fill:#1A1A1A,stroke:#333,color:#FDFDFD;
+  classDef accent fill:#1A1A1A,stroke:#E31B23,color:#FDFDFD;
+  class A,B,R,R2,W,W2,P1,P2,M,N,C,I,G,V,E,C1,L,L2,F,Q,GL,T,ID,CHAT base;
+  class C,I,G,F,Q,T,ID,CHAT accent;
