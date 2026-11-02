@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Body,
@@ -36,7 +36,7 @@ export default function Conversation() {
   );
   const [text, setText] = useState("");
   const [modal, setModal] = useState<
-    "reveal" | "identity" | "block" | "report" | null
+    "identity" | "block" | "report" | null
   >(null);
   const [reason, setReason] = useState("");
   const [evidence, setEvidence] = useState(false);
@@ -44,7 +44,7 @@ export default function Conversation() {
   const [error, setError] = useState<string | null>(null);
   const pending = useRef<string | null>(null);
   const data = conversation.data;
-  const act = async (action: "messages" | "reveal" | "block" | "report") => {
+  const act = async (action: "messages" | "block" | "report") => {
     if (action === "messages" && !text.trim()) return;
     if (action === "report" && reason.trim().length < 3) {
       setError("Add a short reason before reporting.");
@@ -59,9 +59,7 @@ export default function Conversation() {
         "POST",
         action === "messages"
           ? { text: text.trim(), clientId: pending.current }
-          : action === "reveal"
-            ? { confirm: true }
-            : action === "report"
+          : action === "report"
               ? { reason: reason.trim(), includeContent: evidence }
               : {},
       );
@@ -178,21 +176,10 @@ export default function Conversation() {
           )}
         </View>
         <Note>
-          {data.thread.ownRevealed
-            ? "You’ve shared your selected identity here. It stays out of public view, but sharing cannot be fully undone."
-            : "Your identity is still private. A reply never reveals your name or photos automatically."}
+          Both names were revealed when you mutually recognized each other.
+          This chat stays out of public view, but anything shared here can be
+          captured or shared outside the app.
         </Note>
-        {!data.thread.ownRevealed && (
-          <Button
-            title="Choose to reveal my identity"
-            variant="secondary"
-            icon="person-outline"
-            onPress={() => {
-              setError(null);
-              setModal("reveal");
-            }}
-          />
-        )}
       </View>
       <View style={{ gap: 14, paddingVertical: 10 }}>
         {data.messages.map((message) => (
@@ -255,35 +242,6 @@ export default function Conversation() {
           <Text style={{ color: C.muted, fontSize: 12 }}>Report</Text>
         </Pressable>
       </View>
-      <Confirm
-        visible={modal === "reveal"}
-        title="Let them know it’s you?"
-        description="Your current name, profile details and selected photos will be shared only in this conversation. They could capture or share it outside the app."
-        confirm="Share my identity here"
-        busy={busy}
-        onCancel={() => setModal(null)}
-        onConfirm={() => {
-          void act("reveal");
-        }}
-      >
-        <View style={{ gap: 7 }}>
-          <Text style={{ color: C.text, fontSize: 20 }}>{profile?.name}</Text>
-          <Body style={{ fontSize: 13 }}>
-            {profile?.hereTo ? `I'm here to: ${profile.hereTo} · ` : ""}
-            {profile?.photos.length || 0} private photos
-          </Body>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {profile?.photos.map((uri, index) => (
-              <Image
-                key={index}
-                source={{ uri }}
-                style={{ width: 58, height: 72, borderRadius: 8 }}
-              />
-            ))}
-          </View>
-        </View>
-        <ErrorNote message={error} />
-      </Confirm>
       <Confirm
         visible={modal === "identity"}
         title={data.thread.otherIdentity?.name || "Shared identity"}

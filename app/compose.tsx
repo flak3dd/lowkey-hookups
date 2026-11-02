@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Body,
@@ -32,7 +32,7 @@ export default function Compose() {
   );
   // Single 💋 intent; there is nothing to choose.
   const intent: Intent = "Kiss";
-  const [mode, setMode] = useState<IdentityMode>("anonymous");
+  const mode: IdentityMode = "anonymous";
   const [preview, setPreview] = useState(false);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -167,26 +167,18 @@ export default function Compose() {
           <Label>RECIPIENT PREVIEW</Label>
           <Title small>One person.{"\n"}One honest intent.</Title>
           <IdentityCard
-            anonymous={mode === "anonymous"}
-            identity={mode === "named" ? profile : null}
+            anonymous
+            identity={null}
             intent={intent}
           />
           <Body style={{ fontSize: 13, color: C.text }}>
             To: {prettyPhone(normalized)}
           </Body>
-          {mode === "named" ? (
-            <Note warning>
-              They can see your name and selected photos when they open
-              this—even if they never reply. Content could be captured or shared
-              outside the app.
-            </Note>
-          ) : (
-            <Note>
-              No name, photos, or standing profile is included. Your identity
-              stays hidden unless you explicitly reveal it in an accepted
-              conversation.
-            </Note>
-          )}
+          <Note>
+            No name, photos, or written content is included. If you both probe
+            each other and both guess correctly, the chat opens with both names
+            revealed.
+          </Note>
           <Note warning>
             Numbers are self-declared, not verified. This beta cannot guarantee
             that a number identifies the person you intend. Server-managed
@@ -210,70 +202,7 @@ export default function Compose() {
             helper="No membership check. No invitation or SMS if they’re not here."
             maxLength={24}
           />
-          <View style={{ gap: 15 }}>
-            <Label>HOW MUCH OF YOU TO SHARE?</Label>
-            {(["anonymous", "named"] as const).map((choice) => (
-              <Pressable
-                key={choice}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: mode === choice }}
-                onPress={() => setMode(choice)}
-                style={{
-                  flexDirection: "row",
-                  gap: 15,
-                  alignItems: "center",
-                  padding: 19,
-                  borderRadius: 15,
-                  backgroundColor: mode === choice ? C.accentSoft : C.surface,
-                  borderWidth: 1,
-                  borderColor: mode === choice ? C.accentBorder : C.border,
-                }}
-              >
-                <Icon
-                  name={
-                    choice === "anonymous"
-                      ? "eye-off-outline"
-                      : "person-outline"
-                  }
-                  color={mode === choice ? C.accent : C.muted}
-                />
-                <View style={{ flex: 1, gap: 5 }}>
-                  <Text style={{ color: C.text, fontSize: 15 }}>
-                    {choice === "anonymous"
-                      ? "Stay anonymous"
-                      : "Let them know it’s you"}
-                  </Text>
-                  <Body style={{ fontSize: 12, lineHeight: 18 }}>
-                    {choice === "anonymous"
-                      ? "Just your intent. Reveal only if you choose."
-                      : "Your name, details, and private photos."}
-                  </Body>
-                </View>
-                <View
-                  style={{
-                    width: 19,
-                    height: 19,
-                    borderRadius: 10,
-                    borderColor: mode === choice ? C.accent : C.subtle,
-                    borderWidth: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {mode === choice && (
-                    <View
-                      style={{
-                        width: 9,
-                        height: 9,
-                        borderRadius: 5,
-                        backgroundColor: C.accent,
-                      }}
-                    />
-                  )}
-                </View>
-              </Pressable>
-            ))}
-          </View>
+          <Note>Every probe is anonymous. If you both probe each other and both guess correctly, the chat opens with both names revealed.</Note>
           <Note>
             Always Sent. Never delivered, read, or ignored. The next step
             belongs to them.

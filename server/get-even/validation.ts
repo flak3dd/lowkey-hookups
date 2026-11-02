@@ -120,8 +120,8 @@ export function validateProbeInput(value: unknown): ProbeInput | null {
   const phone = canonicalPhone(record.phone);
   const clientId = asTrimmedString(record.clientId, 96);
   if (!phone || !clientId || !isIntent(record.intent)) return null;
-  if (record.mode !== "anonymous" && record.mode !== "named") return null;
-  return { phone, intent: record.intent, mode: record.mode, clientId };
+  if (record.mode !== "anonymous") return null;
+  return { phone, intent: record.intent, mode: "anonymous", clientId };
 }
 
 /**
@@ -181,6 +181,12 @@ export function validateMessage(
   const text = asTrimmedString(record.text, 2_000);
   const clientId = asTrimmedString(record.clientId, 96);
   return text && clientId ? { text, clientId } : null;
+}
+
+export function validateGuessInput(value: unknown): { phone: string } | null {
+  if (!value || typeof value !== "object") return null;
+  const phone = canonicalPhone((value as Record<string, unknown>).phone);
+  return phone ? { phone } : null;
 }
 
 export function validateReason(

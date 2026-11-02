@@ -2,17 +2,20 @@ import { and, asc, desc, eq, gt, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import {
   getEvenBlocks,
+  getEvenCandidates,
   getEvenMessages,
   getEvenProfiles,
   getEvenProbes,
   getEvenReports,
   getEvenThreads,
   type GetEvenMessageRow,
+  type GetEvenCandidateRow,
+  type GetEvenProbeRow,
   type GetEvenThreadRow,
 } from "../../drizzle/get-even-schema";
-import type { BlockItem, Identity, InboxItem, ThreadResponse, ThreadSummary } from "../../shared/get-even";
+import type { BlockItem, CandidateResponse, CandidateSummary, Identity, InboxItem, ThreadResponse, ThreadSummary } from "../../shared/get-even";
 import { getDb } from "../db";
-import { decryptPayload, encryptPayload } from "./crypto";
+import { decryptPayload, encryptPayload, phoneHmac } from "./crypto";
 import { canAccessThread, isExpired, isVisibleToUser, otherParticipant } from "./policy";
 import { requireCurrentProfile } from "./profiles";
 import { lockParticipantProfiles } from "./safety-locks";
@@ -127,46 +130,78 @@ export async function ignoreProbe(actor: Actor, probeId: string): Promise<boolea
   return true;
 }
 
-export async function acceptProbe(actor: Actor, probeId: string, text: string): Promise<string | null> {
+export async function ensureMutualCandidate(tx: any, probe: Pick<GetEvenProbeRow, "id" | "senderUserId" | "recipientUserId">): Promise<string | null> {
+  const reciprocal = await tx
+    .select()
+    .from(getEvenProbes)
+    .where(
+      and(
+        eq(getEvenProbes.senderUserId, probe.recipientUserId),
+        eq(getEvenProbes.recipientUserId, probe.senderUserId),
+        eq(getEvenProbes.state, "open"),
+        gt(getEvenProbes.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(desc(getEvenProbes.createdAt))
+    .limit(1);
+  const other = reciprocal[0];
+  if (!other || (await hasBlock(tx, probe.senderUserId, probe.recipientUserId))) return null;
+  const [probeAId, probeBId] = [probe.id, other.id].sort();
+  const existing = await tx
+    .select({ id: getEvenCandidates.id })
+    .from(getEvenCandidates)
+    .where(and(eq(getEvenCandidates.probeAId, probeAId), eq(getEvenCandidates.probeBId, probeBId)))
+    .limit(1);
+  if (existing[0]) return existing[0].id;
+  const [participantAUserId, participantBUserId] = [probe.senderUserId, probe.recipientUserId].sort((a, b) => a - b);
+  const id = randomUUID();
+  await tx.insert(getEvenCandidates).values({
+    id,
+    probeAId,
+    probeBId,
+    participantAUserId,
+    participantBUserId,
+  });
+  return id;
+}
+
+export async function acceptProbe(actor: Actor, probeId: string): Promise<string | null> {
   const db = await requireDb();
   return db.transaction(async (tx) => {
     let probe = await currentRecipientProbe(tx, actor, probeId, true);
-    if (!probe) return null;
+    if (!probe || probe.state !== "open" || isExpired(probe.expiresAt, new Date())) return null;
     await lockParticipantProfiles(tx, [actor.id, probe.senderUserId]);
     probe = await currentRecipientProbe(tx, actor, probeId, true);
-    if (!probe) return null;
-    if (probe.state === "accepted" && probe.threadId) return probe.threadId;
-    if (probe.state !== "open" || isExpired(probe.expiresAt, new Date())) return null;
-    if ((await hasBlock(tx, actor.id, probe.senderUserId)) || (await hasBlock(tx, probe.senderUserId, actor.id))) {
-      return null;
-    }
-
-    const threadId = randomUUID();
-    const messageId = randomUUID();
-    const transitioned = await tx
-      .update(getEvenProbes)
-      .set({ state: "accepted", threadId })
-      .where(and(eq(getEvenProbes.id, probe.id), eq(getEvenProbes.state, "open")))
-      .returning({ id: getEvenProbes.id });
-    if (transitioned.length !== 1) {
-      const retry = await currentRecipientProbe(tx, actor, probeId, true);
-      return retry?.state === "accepted" ? retry.threadId ?? null : null;
-    }
-
-    await tx.insert(getEvenThreads).values({
-      id: threadId,
-      intent: probe.intent,
-      participantAUserId: probe.senderUserId,
-      participantBUserId: actor.id,
-    });
-    await tx.insert(getEvenMessages).values({
-      id: messageId,
-      threadId,
+    if (!probe || (await hasBlock(tx, actor.id, probe.senderUserId)) || (await hasBlock(tx, probe.senderUserId, actor.id))) return null;
+    const recipientProfileRows = await tx.select().from(getEvenProfiles).where(eq(getEvenProfiles.ownerUserId, actor.id)).limit(1);
+    const senderProfileRows = await tx.select().from(getEvenProfiles).where(eq(getEvenProfiles.ownerUserId, probe.senderUserId)).limit(1);
+    const recipient = recipientProfileRows[0];
+    const sender = senderProfileRows[0];
+    if (!recipient || !sender) return null;
+    const existing = await tx.select().from(getEvenProbes).where(and(
+      eq(getEvenProbes.senderUserId, actor.id),
+      eq(getEvenProbes.recipientUserId, probe.senderUserId),
+      eq(getEvenProbes.state, "open"),
+      gt(getEvenProbes.expiresAt, new Date()),
+    )).limit(1);
+    const reciprocal = existing[0] ?? {
+      id: randomUUID(),
+      receiptId: randomUUID(),
+      recipientUserId: probe.senderUserId,
+      recipientProfileId: sender.id,
+      recipientIncarnationId: sender.incarnationId,
       senderUserId: actor.id,
-      clientId: `accept:${probe.id}`,
-      payloadCiphertext: encryptPayload({ text }),
-    });
-    return threadId;
+      senderProfileId: recipient.id,
+      intent: probe.intent,
+      mode: "anonymous" as const,
+      identityCiphertext: null,
+      state: "open" as const,
+      threadId: null,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000),
+    };
+    if (!existing[0]) await tx.insert(getEvenProbes).values(reciprocal);
+    return ensureMutualCandidate(tx, probe);
   });
 }
 
@@ -207,6 +242,109 @@ export async function reportProbe(
     evidenceCiphertext: evidence ? encryptPayload(evidence) : null,
   });
   return true;
+}
+
+function candidateResponse(row: GetEvenCandidateRow, actorId: number): CandidateResponse {
+  const isA = row.participantAUserId === actorId;
+  const guesses = isA ? row.participantAGuessCount : row.participantBGuessCount;
+  return {
+    candidate: {
+      id: row.id,
+      guessesRemaining: Math.max(0, 2 - guesses),
+      otherGuessedCorrectly: isA ? row.participantBCorrect : row.participantACorrect,
+      lockedUntil: row.lockedUntil?.toISOString() ?? null,
+      threadId: row.threadId,
+      createdAt: row.createdAt.toISOString(),
+    },
+  };
+}
+
+async function accessibleCandidate(db: any, actor: Actor, candidateId: string) {
+  const rows = await db.select().from(getEvenCandidates).where(eq(getEvenCandidates.id, candidateId)).limit(1);
+  const candidate = rows[0];
+  if (!candidate || (candidate.participantAUserId !== actor.id && candidate.participantBUserId !== actor.id)) return null;
+  const otherUserId = candidate.participantAUserId === actor.id ? candidate.participantBUserId : candidate.participantAUserId;
+  if (await hasBlock(db, actor.id, otherUserId)) return null;
+  return candidate;
+}
+
+export async function listCandidates(actor: Actor): Promise<CandidateSummary[]> {
+  const db = await requireDb();
+  const rows = await db.select().from(getEvenCandidates).where(
+    or(eq(getEvenCandidates.participantAUserId, actor.id), eq(getEvenCandidates.participantBUserId, actor.id)),
+  ).orderBy(desc(getEvenCandidates.updatedAt));
+  return rows.map((row) => candidateResponse(row, actor.id).candidate);
+}
+
+export async function getCandidate(actor: Actor, candidateId: string): Promise<CandidateResponse | null> {
+  const db = await requireDb();
+  const row = await accessibleCandidate(db, actor, candidateId);
+  return row ? candidateResponse(row, actor.id) : null;
+}
+
+export async function guessCandidate(actor: Actor, candidateId: string, guessedPhone: string): Promise<CandidateResponse | null> {
+  const db = await requireDb();
+  return db.transaction(async (tx) => {
+    let candidate = await accessibleCandidate(tx, actor, candidateId);
+    if (!candidate) return null;
+    const now = new Date();
+    if (candidate.lockedUntil && candidate.lockedUntil > now) return candidateResponse(candidate, actor.id);
+    if (candidate.lockedUntil && candidate.lockedUntil <= now) {
+      await tx.update(getEvenCandidates).set({
+        participantAGuessCount: 0,
+        participantBGuessCount: 0,
+        participantACorrect: false,
+        participantBCorrect: false,
+        lockedUntil: null,
+      }).where(eq(getEvenCandidates.id, candidate.id));
+      candidate = await accessibleCandidate(tx, actor, candidateId);
+      if (!candidate) return null;
+    }
+    const isA = candidate.participantAUserId === actor.id;
+    const alreadyCorrect = isA ? candidate.participantACorrect : candidate.participantBCorrect;
+    if (alreadyCorrect) return candidateResponse(candidate, actor.id);
+    const otherUserId = isA ? candidate.participantBUserId : candidate.participantAUserId;
+    const otherProfileRows = await tx.select().from(getEvenProfiles).where(eq(getEvenProfiles.ownerUserId, otherUserId)).limit(1);
+    const otherProfile = otherProfileRows[0];
+    if (!otherProfile) return null;
+    const correct = phoneHmac(guessedPhone) === otherProfile.phoneHmac;
+    const countField = isA ? "participantAGuessCount" : "participantBGuessCount";
+    const correctField = isA ? "participantACorrect" : "participantBCorrect";
+    const nextCount = (isA ? candidate.participantAGuessCount : candidate.participantBGuessCount) + 1;
+    await tx.update(getEvenCandidates).set({
+      [countField]: nextCount,
+      [correctField]: correct,
+      lockedUntil: !correct && nextCount >= 2 ? new Date(now.getTime() + 24 * 60 * 60 * 1_000) : candidate.lockedUntil,
+      updatedAt: now,
+    }).where(eq(getEvenCandidates.id, candidate.id));
+    candidate = await accessibleCandidate(tx, actor, candidateId);
+    if (!candidate) return null;
+    if (correct && candidate.participantACorrect && candidate.participantBCorrect && !candidate.threadId) {
+      const profiles = await tx.select().from(getEvenProfiles).where(or(
+        eq(getEvenProfiles.ownerUserId, candidate.participantAUserId),
+        eq(getEvenProfiles.ownerUserId, candidate.participantBUserId),
+      ));
+      const profileA = profiles.find((profile: any) => profile.ownerUserId === candidate.participantAUserId);
+      const profileB = profiles.find((profile: any) => profile.ownerUserId === candidate.participantBUserId);
+      if (!profileA || !profileB) return candidateResponse(candidate, actor.id);
+      const threadId = randomUUID();
+      await tx.insert(getEvenThreads).values({
+        id: threadId,
+        intent: profileA.intent,
+        participantAUserId: candidate.participantAUserId,
+        participantBUserId: candidate.participantBUserId,
+        participantAIdentityCiphertext: encryptPayload(profileResponse(profileA)),
+        participantBIdentityCiphertext: encryptPayload(profileResponse(profileB)),
+      });
+      await tx.update(getEvenCandidates).set({ threadId, updatedAt: now }).where(eq(getEvenCandidates.id, candidate.id));
+      await tx.update(getEvenProbes).set({ state: "accepted", threadId }).where(or(
+        eq(getEvenProbes.id, candidate.probeAId),
+        eq(getEvenProbes.id, candidate.probeBId),
+      ));
+      candidate = await accessibleCandidate(tx, actor, candidateId);
+    }
+    return candidate ? candidateResponse(candidate, actor.id) : null;
+  });
 }
 
 export async function listThreads(actor: Actor): Promise<ThreadSummary[]> {

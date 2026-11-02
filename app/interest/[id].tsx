@@ -25,18 +25,12 @@ export default function Interest() {
   const { profile, refreshAll } = useApp();
   const inbox = useLive<{ items: InboxItem[] }>("inbox", "/inbox", !!profile);
   const item = inbox.data?.items.find((probe) => probe.id === id);
-  const [reply, setReply] = useState(false);
-  const [message, setMessage] = useState("");
   const [modal, setModal] = useState<"block" | "report" | null>(null);
   const [reason, setReason] = useState("");
   const [evidence, setEvidence] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const act = async (action: "ignore" | "block" | "report" | "accept") => {
-    if (action === "accept" && !message.trim()) {
-      setError("Add a first reply before continuing.");
-      return;
-    }
     if (action === "report" && reason.trim().length < 3) {
       setError("Add a short reason for the safety team.");
       return;
@@ -44,22 +38,17 @@ export default function Interest() {
     setError(null);
     setBusy(true);
     try {
-      const result = await request<{ threadId?: string }>(
+      const result = await request<{ candidateId?: string }>(
         `/inbox/${id}/${action}`,
         "POST",
-        action === "accept"
-          ? { message: message.trim() }
-          : action === "report"
+        action === "report"
             ? { reason: reason.trim(), includeContent: evidence }
             : {},
       );
       await refreshAll();
       setModal(null);
-      if (result.threadId)
-        router.replace({
-          pathname: "/thread/[id]",
-          params: { id: result.threadId },
-        });
+      if (result.candidateId)
+        router.replace(`/candidate/${result.candidateId}` as never);
       else router.replace("/(tabs)/inbox");
     } catch (e) {
       setError(errorText(e));
@@ -99,60 +88,9 @@ export default function Interest() {
         anonymous={item.mode === "anonymous"}
         intent={item.intent}
       />
-      <Note>
-        Opening, ignoring, or blocking never sends a status back. Only your
-        voluntary reply starts a conversation.
-      </Note>
-      {reply ? (
-        <>
-          <Field
-            label="YOUR FIRST REPLY"
-            placeholder="What would you like to say?"
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            maxLength={2000}
-            editable={!busy}
-          />
-          <Note warning>
-            Replying lets the sender know you’re participating. Your name and
-            photos stay private unless you choose to share them.
-          </Note>
-          <Button
-            title="Accept and send my reply"
-            loading={busy}
-            onPress={() => {
-              void act("accept");
-            }}
-          />
-          <Button
-            title="Not now"
-            variant="quiet"
-            disabled={busy}
-            onPress={() => setReply(false)}
-          />
-        </>
-      ) : (
-        <>
-          <Button
-            title="Reply on my terms"
-            icon="chatbubble-outline"
-            disabled={busy}
-            onPress={() => {
-              setError(null);
-              setReply(true);
-            }}
-          />
-          <Button
-            title="Ignore privately"
-            variant="secondary"
-            loading={busy}
-            onPress={() => {
-              void act("ignore");
-            }}
-          />
-        </>
-      )}
+      <Note>Opening, ignoring, or blocking never sends a status back. Send an anonymous probe back if you want to create a mutual candidate.</Note>
+      <Button title="Send an anonymous probe back" icon="eye-off-outline" loading={busy} onPress={() => void act("accept")} />
+      <Button title="Ignore privately" variant="secondary" loading={busy} onPress={() => void act("ignore")} />
       <ErrorNote message={error} />
       <View style={{ flexDirection: "row", justifyContent: "center", gap: 32 }}>
         <Pressable

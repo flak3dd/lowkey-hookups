@@ -7,25 +7,23 @@ import {
 } from "../constants/app-info";
 
 describe("App info and discretion copy", () => {
-  it("explains three steps without claiming automatic reciprocal-probe chat", () => {
+  it("explains three steps with mutual guesses and automatic name reveal", () => {
     expect(APP_JOURNEY).toHaveLength(3);
     expect(APP_JOURNEY[0].text).toContain("No public profile");
-    expect(APP_JOURNEY[1].text).toContain("Send a 💋");
+    expect(APP_JOURNEY[1].text).toContain("anonymous 💋 probe");
     expect(APP_JOURNEY[1].text).not.toContain("Hook up, Date, or Chat");
-    expect(APP_JOURNEY[2].text).toContain("accepts and voluntarily replies");
-    expect(APP_JOURNEY[2].text).toContain("does not unlock chat");
-    expect(JOURNEY_VISIBILITY_NOTE).toContain("recipient may see");
-    expect(JOURNEY_VISIBILITY_NOTE).toContain("Named probe");
+    expect(APP_JOURNEY[2].text).toContain("both correctly guess");
+    expect(APP_JOURNEY[2].text).toContain("24 hours");
+    expect(APP_JOURNEY[2].text).toContain("both names");
+    expect(JOURNEY_VISIBILITY_NOTE).toContain("Every probe is anonymous");
   });
   it("provides six pillars with accurate receipt, batch and reveal limits", () => {
     expect(DISCRETION_PILLARS).toHaveLength(6);
-    expect(DISCRETION_PILLARS[0].text).toContain("no ignore or block status");
+    expect(DISCRETION_PILLARS[0].text).toContain("ignore, or block receipts");
     expect(DISCRETION_PILLARS[2].text).toContain(
       "not how many contacts like you back",
     );
-    expect(DISCRETION_PILLARS[4].text).toContain(
-      "each person separately confirms",
-    );
+    expect(DISCRETION_PILLARS[4].text).toContain("both names automatically");
     expect(DISCRETION_PILLARS[5].text).toContain("cannot guarantee");
     expect(DISCRETION_PILLARS.map((p) => p.title).join(" ")).not.toContain(
       "Zero Rejection Risk",

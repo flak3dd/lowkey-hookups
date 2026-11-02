@@ -10,6 +10,7 @@ import { getDb } from "../db";
 import { decryptPayload, encryptPayload } from "./crypto";
 import { selectSingleEligibleRecipient } from "./policy";
 import { lockParticipantProfiles } from "./safety-locks";
+import { ensureMutualCandidate } from "./conversations";
 import type { ReceiptPayload } from "./serializers";
 
 const PROBE_LIFETIME_MS = 30 * 24 * 60 * 60 * 1_000;
@@ -99,7 +100,7 @@ export async function routeReceipt(receiptId: string): Promise<void> {
 
     const payload = decryptPayload<ReceiptPayload>(receipt.payloadCiphertext);
     const now = new Date();
-    await tx.insert(getEvenProbes).values({
+    const inserted = {
       id: randomUUID(),
       receiptId: receipt.id,
       recipientUserId: current.ownerUserId,
@@ -113,7 +114,9 @@ export async function routeReceipt(receiptId: string): Promise<void> {
       identityCiphertext:
         receipt.mode === "named" && payload.senderIdentity ? encryptPayload(payload.senderIdentity) : null,
       expiresAt: new Date(now.getTime() + PROBE_LIFETIME_MS),
-    });
+    };
+    await tx.insert(getEvenProbes).values(inserted);
+    await ensureMutualCandidate(tx, inserted);
     await markProcessed(tx, receipt.id);
   });
 }

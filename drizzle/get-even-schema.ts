@@ -121,7 +121,34 @@ export const getEvenProbes = pgTable(
   ],
 );
 
-/** An accepted private conversation. Reveals are per-participant and explicit. */
+/** A reciprocal anonymous-probe candidate. Chat is unavailable until both users guess correctly. */
+export const getEvenCandidates = pgTable(
+  "getEvenCandidates",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    probeAId: varchar("probeAId", { length: 36 }).notNull(),
+    probeBId: varchar("probeBId", { length: 36 }).notNull(),
+    participantAUserId: integer("participantAUserId").notNull(),
+    participantBUserId: integer("participantBUserId").notNull(),
+    participantAGuessCount: integer("participantAGuessCount").default(0).notNull(),
+    participantBGuessCount: integer("participantBGuessCount").default(0).notNull(),
+    participantACorrect: boolean("participantACorrect").default(false).notNull(),
+    participantBCorrect: boolean("participantBCorrect").default(false).notNull(),
+    lockedUntil: timestamp("lockedUntil", { precision: 3 }),
+    threadId: varchar("threadId", { length: 36 }),
+    createdAt: timestamp("createdAt", { precision: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { precision: 3 })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("getEvenCandidates_probe_pair_unique").on(table.probeAId, table.probeBId),
+    index("getEvenCandidates_participantA_updated_idx").on(table.participantAUserId, table.updatedAt),
+    index("getEvenCandidates_participantB_updated_idx").on(table.participantBUserId, table.updatedAt),
+  ],
+);
+/** A private conversation whose participant identities are revealed on mutual unlock. */
 export const getEvenThreads = pgTable(
   "getEvenThreads",
   {
@@ -219,6 +246,7 @@ export const getEvenReports = pgTable(
 export type GetEvenProfileRow = typeof getEvenProfiles.$inferSelect;
 export type GetEvenReceiptRow = typeof getEvenReceipts.$inferSelect;
 export type GetEvenProbeRow = typeof getEvenProbes.$inferSelect;
+export type GetEvenCandidateRow = typeof getEvenCandidates.$inferSelect;
 export type GetEvenThreadRow = typeof getEvenThreads.$inferSelect;
 export type GetEvenMessageRow = typeof getEvenMessages.$inferSelect;
 
@@ -244,4 +272,3 @@ export const getEvenPhoneVerifications = pgTable(
 
 export type GetEvenPhoneVerificationRow =
   typeof getEvenPhoneVerifications.$inferSelect;
-

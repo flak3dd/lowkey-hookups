@@ -70,7 +70,7 @@ function MassProbeFlow() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Single 💋 intent; there is nothing to choose.
   const intent: Intent = "Kiss";
-  const [mode, setMode] = useState<IdentityMode>("anonymous");
+  const mode: IdentityMode = "anonymous";
   const [search, setSearch] = useState("");
   const [manualName, setManualName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
@@ -305,8 +305,8 @@ function MassProbeFlow() {
           members, mutual interest, receipt, delivery or opening.
         </Note>
         <Body>
-          There’s no match counter to watch. If someone voluntarily replies, the
-          conversation appears in your inbox.
+          There’s no match counter to watch. If someone sends a reciprocal probe,
+          the anonymous candidate appears in your inbox.
         </Body>
       </Screen>
     );
@@ -367,8 +367,8 @@ function MassProbeFlow() {
           <Label>YOUR CHOICE, NOT A MEMBERSHIP CHECK</Label>
           <Title small>One intent.{"\n"}Chosen people.</Title>
           <IdentityCard
-            anonymous={review.mode === "anonymous"}
-            identity={review.mode === "named" ? profile : null}
+            anonymous
+            identity={null}
             intent={review.intent}
           />
           <View style={{ gap: 14 }}>
@@ -388,21 +388,14 @@ function MassProbeFlow() {
               </View>
             ))}
           </View>
-          {review.mode === "named" && (
-            <Note warning>
-              Your name, details and selected photos can be viewed
-              without a reply. A recipient can capture or share them outside the
-              app.
-            </Note>
-          )}
           <Note warning>
             Numbers are self-declared, not verified. This beta cannot guarantee
             real-world recipient identity. Server-managed encryption is not
             end-to-end encryption.
           </Note>
           <Note>
-            No membership or mutual-match count is returned. A voluntary reply
-            is the only sender-visible participation signal.
+            No membership or mutual-match count is returned. A reciprocal probe
+            creates the private candidate game.
           </Note>
           <Body style={{ fontSize: 12 }}>
             Contact names are local labels. Only these reviewed numbers are
@@ -422,37 +415,7 @@ function MassProbeFlow() {
             Choose contacts you already know. Nothing imports or sends until you
             explicitly choose it.
           </Body>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            {(["anonymous", "named"] as const).map((choice) => (
-              <Pressable
-                key={choice}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: mode === choice }}
-                onPress={() => setMode(choice)}
-                style={{
-                  flex: 1,
-                  padding: 17,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: mode === choice ? C.accentBorder : C.border,
-                  backgroundColor: mode === choice ? C.accentSoft : C.surface,
-                  gap: 9,
-                }}
-              >
-                <Icon
-                  name={
-                    choice === "anonymous"
-                      ? "eye-off-outline"
-                      : "person-outline"
-                  }
-                  color={mode === choice ? C.accent : C.muted}
-                />
-                <Text style={{ color: C.text, fontSize: 13 }}>
-                  {choice === "anonymous" ? "Anonymous" : "Named"}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <Note>Every batch probe is anonymous. Names appear only after both people guess correctly.</Note>
           <Card>
             <Label>CONTACTS STAY HERE UNTIL YOU REVIEW</Label>
             <Button
@@ -680,8 +643,8 @@ function MassProbeFlow() {
             )}
           </View>
           <Note>
-            No match counts before a voluntary reply. A batch always says Sent,
-            never who is here or who opened it.
+            No match counts are exposed. A batch always says Sent, never who is
+            here or who opened it.
           </Note>
         </>
       )}
@@ -728,7 +691,7 @@ function MassProbeFlow() {
       <Confirm
         visible={modal === "send"}
         title={`Send to ${review?.contacts.length || 0} chosen ${review?.contacts.length === 1 ? "person" : "people"}?`}
-        description={`${intentLabel(review?.intent || intent)} · ${review?.mode === "named" ? "Named: your identity and photos can be seen without a reply." : "Anonymous: no name or photos are included."} No target SMS, membership check or mutual-match count. Sent means submitted, not delivered.`}
+        description={`${intentLabel(review?.intent || intent)} · Anonymous: no name or photos are included. No target SMS, membership check or mutual-match count. Sent means submitted, not delivered.`}
         confirm={`Send ${review?.contacts.length || 0} private probes`}
         busy={busy}
         onCancel={() => {

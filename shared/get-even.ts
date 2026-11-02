@@ -35,6 +35,15 @@ export type InboxItem = {
   identity: Identity | null;
   createdAt: string;
 };
+export type CandidateSummary = {
+  id: string;
+  guessesRemaining: number;
+  otherGuessedCorrectly: boolean;
+  lockedUntil: string | null;
+  threadId: string | null;
+  createdAt: string;
+};
+export type CandidateResponse = { candidate: CandidateSummary };
 export type ThreadSummary = {
   id: string;
   intent: Intent;
@@ -60,7 +69,7 @@ export type BlockItem = { id: string; label: string; createdAt: string };
  * POST /probes {phone,intent,mode,clientId} -> {receiptId:string,status:"Sent"}
  * GET /inbox -> {items:InboxItem[]}
  * POST /inbox/:id/ignore -> {ok:true}
- * POST /inbox/:id/accept {message} -> {threadId:string}
+ * POST /inbox/:id/accept -> {candidateId:string} (sends an anonymous reciprocal probe)
  * POST /inbox/:id/block -> {ok:true}
  * POST /inbox/:id/report {reason,includeContent:boolean} -> {ok:true}
  * GET /threads -> {items:ThreadSummary[]}
@@ -69,6 +78,9 @@ export type BlockItem = { id: string; label: string; createdAt: string };
  * POST /threads/:id/reveal {confirm:true} -> {ok:true}
  * POST /threads/:id/block -> {ok:true}
  * POST /threads/:id/report {reason,includeContent:boolean} -> {ok:true}
+ * GET /candidates -> {items:CandidateSummary[]}
+ * GET /candidates/:id -> CandidateResponse
+ * POST /candidates/:id/guess {phone} -> CandidateResponse
  * GET /blocks -> {items:BlockItem[]}
  * DELETE /blocks/:id -> {ok:true}
  * DELETE /inbox -> {ok:true}

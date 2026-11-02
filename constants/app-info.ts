@@ -9,23 +9,23 @@ export const APP_JOURNEY = [
   {
     number: "02",
     title: "Discreet probe",
-    text: "Pick contacts or enter a number. Send a 💋, the one simple signal. Start Anonymous, or choose Named and review the identity you will share.",
+    text: "Pick a contact or enter a number. Send one anonymous 💋 probe. No written content or identity is attached.",
   },
   {
     number: "03",
     title: "Mutual unlock",
-    text: "Your interest starts the invitation. When the recipient accepts and voluntarily replies, private chat opens. A reciprocal probe alone does not unlock chat in this build. If they stay silent, you receive no delivery, read, ignore, or block status.",
+    text: "A chat opens only after both people probe each other and both correctly guess within two attempts. Two incorrect guesses lock the candidate for 24 hours. Once unlocked, both names appear in the chat.",
   },
 ] as const;
 
 export const JOURNEY_VISIBILITY_NOTE =
-  "A probe is not public, but its recipient may see your intent before replying. A Named probe may also show your previewed name and photos. Silence hides response status; it does not make the probe invisible to its recipient.";
+  "Every probe is anonymous and contains no written content. A mutual probe creates a private guessing game; the green light means the other person has guessed correctly and is waiting.";
 
 export const DISCRETION_PILLARS = [
   {
     icon: "checkmark-outline",
     title: "No rejection receipts",
-    text: "Every valid accepted probe always says Sent. There are no delivery or read receipts, and no ignore or block status. Only if a person replies will you even know if they have the app. If a reply is received... Well.. intentions are clear...",
+    text: "Every valid probe says Sent. There are no delivery, read, guess, ignore, or block receipts. Only a mutual probe creates a candidate.",
   },
   {
     icon: "notifications-off-outline",
@@ -45,11 +45,11 @@ export const DISCRETION_PILLARS = [
   {
     icon: "person-outline",
     title: "Anonymous by default",
-    text: "Anonymous probes share intent without a name or photos. You can deliberately choose Named instead. In accepted chat, each person separately confirms before revealing their own identity. A reply does not automatically reveal either person, and nobody can force a reveal.",
+    text: "Every probe starts anonymous. A candidate requires two correct guesses from both people; the unlocked chat then reveals both names automatically.",
   },
   {
     icon: "hand-left-outline",
     title: "Silence is an answer",
-    text: "Responding is optional. Opening, ignoring, blocking, reporting, or expiry sends no status back. Only a voluntary reply signals participation. No explanation or follow-up is owed; the app cannot guarantee how people behave outside it.",
+    text: "Responding is optional. Opening, ignoring, blocking, reporting, or expiry sends no status back. A reciprocal probe is the only way a candidate is created. No explanation or follow-up is owed; the app cannot guarantee how people behave outside it.",
   },
 ] as const;

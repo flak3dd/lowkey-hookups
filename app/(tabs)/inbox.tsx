@@ -14,19 +14,20 @@ import {
   Title,
 } from "@/components/get-even/ui";
 import { relativeDate, useApp, useLive } from "@/lib/get-even/provider";
-import { InboxItem, INTENT_SYMBOL, ThreadSummary } from "@/shared/get-even";
+import { CandidateSummary, InboxItem, INTENT_SYMBOL, ThreadSummary } from "@/shared/get-even";
 
 export default function Inbox() {
   const router = useRouter();
   const { profile } = useApp();
-  const [tab, setTab] = useState<"interests" | "conversations">("interests");
+  const [tab, setTab] = useState<"interests" | "candidates" | "conversations">("interests");
   const inbox = useLive<{ items: InboxItem[] }>("inbox", "/inbox", !!profile);
   const threads = useLive<{ items: ThreadSummary[] }>(
     "threads",
     "/threads",
     !!profile,
   );
-  const current = tab === "interests" ? inbox : threads;
+  const candidates = useLive<{ items: CandidateSummary[] }>("candidates", "/candidates", !!profile);
+  const current = tab === "interests" ? inbox : tab === "candidates" ? candidates : threads;
   if (!profile)
     return (
       <Screen>
@@ -47,7 +48,7 @@ export default function Inbox() {
         <Label>YOU HOLD THE NEXT STEP</Label>
         <Title>On your terms.</Title>
         <Body>
-          Reply, ignore, or leave it for another day.{"\n"}You don’t owe anyone
+          Probe back, guess, or leave it for another day.{"\n"}You don’t owe anyone
           an answer.
         </Body>
       </View>
@@ -59,7 +60,7 @@ export default function Inbox() {
           borderRadius: 13,
         }}
       >
-        {(["interests", "conversations"] as const).map((item) => (
+        {(["interests", "candidates", "conversations"] as const).map((item) => (
           <Pressable
             key={item}
             accessibilityRole="button"
@@ -76,7 +77,7 @@ export default function Inbox() {
             <Text
               style={{ color: tab === item ? C.text : C.subtle, fontSize: 13 }}
             >
-              {item === "interests" ? "Interests" : "Conversations"}
+              {item === "interests" ? "Interests" : item === "candidates" ? "Candidates" : "Conversations"}
             </Text>
           </Pressable>
         ))}
@@ -163,6 +164,15 @@ export default function Inbox() {
             description="If someone sends you an interest, it appears only here. Opening it never notifies them."
           />
         )
+      ) : tab === "candidates" ? (
+        candidates.data?.items.length ? candidates.data.items.map((item) => (
+          <Card key={item.id} onPress={() => router.push(`/candidate/${item.id}` as never)} style={{ gap: 10 }}>
+            <Label>ANONYMOUS CANDIDATE</Label>
+            <Text style={{ color: C.text, fontSize: 20 }}>Two probes. Two guesses.</Text>
+            <Body>{item.otherGuessedCorrectly ? "Green light: they recognized you and are waiting." : `${item.guessesRemaining} guess${item.guessesRemaining === 1 ? "" : "es"} remaining.`}</Body>
+            <Text style={{ color: C.accent, fontSize: 13 }}>{item.lockedUntil ? "Locked for 24 hours" : "Open candidate"}</Text>
+          </Card>
+        )) : <Empty icon="eye-off-outline" title="No mutual candidates yet." description="When you both send an anonymous probe, the guessing game appears here." />
       ) : threads.data?.items.length ? (
         threads.data.items.map((item) => (
           <Card
@@ -210,7 +220,7 @@ export default function Inbox() {
         <Empty
           icon="chatbubbles-outline"
           title="Only if you choose."
-          description="Accept an interest and send a first reply to start a private conversation."
+          description="Both people must guess correctly before a chat can open."
         />
       )}
       <Body style={{ textAlign: "center", color: C.subtle, fontSize: 11 }}>

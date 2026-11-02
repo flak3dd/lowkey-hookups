@@ -5,9 +5,12 @@ import {
   acceptProbe,
   blockProbe,
   blockThread,
+  getCandidate,
   getThread,
+  guessCandidate,
   ignoreProbe,
   listBlocks,
+  listCandidates,
   listInbox,
   listThreads,
   postThreadMessage,
@@ -28,6 +31,7 @@ import {
 import {
   isConfirmed,
   validateMassProbeInput,
+  validateGuessInput,
   validateMessage,
   validatePhoneInput,
   validateProbeInput,
@@ -215,17 +219,9 @@ export function registerGetEvenRoutes(app: Express): void {
   router.post(
     "/inbox/:id/accept",
     handle(async (req, res) => {
-      const input = validateMessage({
-        text: req.body?.message,
-        clientId: `accept:${req.params.id}`,
-      });
-      if (!input) {
-        res.status(400).json({ error: "Invalid request" });
-        return;
-      }
-      const threadId = await acceptProbe(actor(req), req.params.id, input.text);
-      if (!threadId) return notFound(res);
-      res.json({ threadId });
+      const candidateId = await acceptProbe(actor(req), req.params.id);
+      if (!candidateId) return notFound(res);
+      res.json({ candidateId });
     }),
   );
   router.post(
@@ -256,6 +252,33 @@ export function registerGetEvenRoutes(app: Express): void {
     }),
   );
 
+  router.get(
+    "/candidates",
+    handle(async (req, res) => {
+      res.json({ items: await listCandidates(actor(req)) });
+    }),
+  );
+  router.get(
+    "/candidates/:id",
+    handle(async (req, res) => {
+      const result = await getCandidate(actor(req), req.params.id);
+      if (!result) return notFound(res);
+      res.json(result);
+    }),
+  );
+  router.post(
+    "/candidates/:id/guess",
+    handle(async (req, res) => {
+      const input = validateGuessInput(req.body);
+      if (!input) {
+        res.status(400).json({ error: "Invalid request" });
+        return;
+      }
+      const result = await guessCandidate(actor(req), req.params.id, input.phone);
+      if (!result) return notFound(res);
+      res.json(result);
+    }),
+  );
   router.get(
     "/threads",
     handle(async (req, res) => {
